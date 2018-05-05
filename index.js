@@ -11,8 +11,6 @@ var connection = mysql.createConnection({
 
 displayItems();
 userInput();
-// TODO: Find out where to put "connection.end();" to end the connection without an error
-// maybe re-open a connection for each function?
 
 function displayItems() {
 
@@ -43,19 +41,32 @@ function userInput() {
 
     inquirer.prompt(questions).then(answers => {
 
-        connection.query("SELECT * FROM products WHERE item_id =" + answers.productItemID, function(err, res) {
+        connection.query("SELECT item_id, price, stock_quantity FROM products", function(err, res) {
             if (err) throw err;
+            
+            var selectProduct = answers.productItemID - 1;
 
-            if (res[0].stock_quantity === 0) {
+            if (res[selectProduct].stock_quantity === 0) {
                 console.log("Sorry we are out of stock");
-            } else if (res[0].stock_quantity < answers.productItemID) {
-                console.log("Sorry we do not have that much in stock, the number remaining is " + res[0].stock_quantity);
+            } else if (res[selectProduct].stock_quantity < answers.productQuantity) {
+                console.log("Sorry we do not have that much in stock, the number remaining is " + res[selectProduct].stock_quantity);
             } else {
-
+                var updateStock = res[selectProduct].stock_quantity - answers.productQuantity;
+                var itemPrice = res[selectProduct].price;
+                var totalPrice = answers.productQuantity * itemPrice;
+                var query = "UPDATE products SET stock_quantity = ? WHERE item_id = ?";
                 // TODO: write a update statement to edit the database
                 // and show the customer the cost of their cart
-                console.log("You just bought " + answers.productItemID + " items");
+                connection.query(query, [updateStock, answers.productItemID], function(err, res) {
+                    if (err) throw err;
+
+                    console.log("You just bought " + answers.productQuantity + " items");
+                    console.log("Your total cost is: " + totalPrice);
+
+                });               
             }
+
+            connection.end();
         });
     });
 }
